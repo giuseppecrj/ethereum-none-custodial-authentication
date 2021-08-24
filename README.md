@@ -75,7 +75,7 @@ export const register = async (username: string, password: string) => {
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(request), // body data type must match "Content-Type" header
+    body: JSON.stringify(request),
   });
 
   // done user is registered!
@@ -147,52 +147,109 @@ export const register = async (registerInfo: RegisterRequest) => {
 
 ### Login existing wallet
 
+User logging into an already created account.
+
 #### Flow
 
 ![login flow](sequences/2.login.svg)
 
-If the user wants to login to an already created wallet on your app you need to do the below:
-
-#### Authentication token
-
-Firstly you need to generate the authentication token (hash of the master_key):
+##### Client
 
 ```ts
-import { getAuthenticationToken } from 'ethereum-web2-encryption';
-...
-const authenticationToken = await getAuthenticationToken(
-  'THE_USERSNAME',
-  'USERS_STRONG_PASSWORD'
-);
-console.log(authenticationToken);
-// 0xace36d94ae1397b87135d363f207a440c5b30a0f2ce2ebf181b6ded0df9c84e7
+import {
+  getAuthenticationToken,
+  decryptWallet,
+} from 'ethereum-web2-encryption';
+
+// They have just clicked the login button after entering
+// their username and password
+export const login = async (username: string, password: string) => {
+  const authenticationToken = await getAuthenticationToken(username, password);
+
+  const request = {
+    username,
+    userAuthenticationToken: encryptedWallet.userAuthenticationToken,
+  };
+
+  // look at server part below to see what your server is expected to do
+  const response = await fetch('YOUR_SERVER_API_LOGIN_ENDPOINT', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  const encryptedWallet = await response.json();
+  console.log(encryptedWallet);
+  // {
+  //   encryptedKeyInfo: {
+  //       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
+  //       iv: '0xa3b054976a6ffc7fa1c527577480b663',
+  //    }
+  //}
+
+  const decryptedWallet = await decryptWallet(
+    username,
+    password,
+    encryptedWallet.encryptedKeyInfo
+  );
+  console.log(decryptedWallet);
+  // {
+  //    ethereumAddress: '0xa31e0D672AA9c6c4Ce863Bd17d1c7c9d6C56D5E8',
+  //    privateKey: '0x602cbc76611ae50bcff99beacb4ab8e84853830f3036da946a8473107c4056e8',
+  //}
+
+  // done user is logged in!
+};
 ```
 
-You then need to expose an endpoint on your server which can pass in an authentication token and get back the encrypted key details, this contains the encrypted key and the iv used. This is the details you got when you created the users wallet. It is up to you how hard you make that information to get for a user, if that is a device validation or email validation you can add any added security to this model.
-
-#### decrypt the wallet
-
-Once you done the request to your server to return the encrypted private key and the iv you can call:
+##### Server
 
 ```ts
-import { decryptWallet } from 'ethereum-web2-encryption';
-...
-const decryptedWallet = await decryptWallet(
-  'THE_USERSNAME',
-  'USERS_STRONG_PASSWORD',
-  {
-    key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
-    iv: '0xa3b054976a6ffc7fa1c527577480b663',
+import {
+  verifyEthereumAddress,
+  hashAuthenticationTokenOnServer,
+} from 'ethereum-web2-encryption';
+import db from 'YOUR_DB';
+
+interface LoginRequest {
+  username: string;
+  userAuthenticationToken: string;
+}
+
+// They client has called the server endpoint which then calls this
+// will keep in 1 method so its easy to follow
+export const login = async (loginRequest: LoginRequest) => {
+  const userAuthenticationInfo = await db.userAuthenticationInfo(
+    registerInfo.username
+  );
+  if (!userAuthenticationInfo) {
+    throw new Error('User does not exists');
   }
-);
-console.log(encryptedWallet);
-// {
-//    ethereumAddress: '0xa31e0D672AA9c6c4Ce863Bd17d1c7c9d6C56D5E8',
-//    privateKey: '0x602cbc76611ae50bcff99beacb4ab8e84853830f3036da946a8473107c4056e8',
-//}
-```
 
-That is all you need to do to login to an existing wallet, at this point you can sign transactions on the client and all without holding any keys on your server.
+  const serverHashMatchesClientHash = await serverHashMatchesClientHash(
+    userAuthenticationInfo.salt,
+    loginRequest.userAuthenticationToken,
+    userAuthenticationInfo.serverAuthenticationHash
+  );
+  console.log(serverHashMatchesClientHash);
+  // {
+  //    salt: '0x2e7199cd889426be35d730aabc3fa073',
+  //    serverAuthenticationHash: '0xf06e83e0086d2546cc7730eeee08bc739daa2af80fb34691ebc0a0964b96eb34',
+  //}
+  if (!serverHashMatchesClientHash) {
+    throw new Error('Incorrect login.');
+  }
+
+  return {
+    encryptedKeyInfo: {
+      key: userAuthenticationInfo.encryptedPk,
+      iv: userAuthenticationInfo.encryptedPkIv,
+    },
+  };
+};
+```
 
 ### Change password
 
