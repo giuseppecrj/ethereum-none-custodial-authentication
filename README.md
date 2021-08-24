@@ -136,9 +136,9 @@ export const register = async (registerInfo: RegisterRequest) => {
     username: registerInfo.username,
     ethereumAddress: registerInfo.ethereumAddress,
     serverAuthenticationHash: serverAuthHashResult.serverAuthenticationHash,
-    salt: serverAuthHashResult.salt
+    salt: serverAuthHashResult.salt,
     encryptedPk: registerInfo.encryptedKeyInfo.key,
-    encryptedPkIv: registerInfo.encryptedKeyInfo.iv
+    encryptedPkIv: registerInfo.encryptedKeyInfo.iv,
   });
 
   // done user is registered!
@@ -391,7 +391,9 @@ export const encryptedInfo = async (
     encryptedInfo.serverAuthenticationHash
   );
   if (!serverHashMatchesClientHash) {
-    throw new Error('401 > this does not match the user auth token (wrong username + password).');
+    throw new Error(
+      '401 > this does not match the user auth token (wrong username + password).'
+    );
   }
 
   return {
@@ -415,7 +417,9 @@ interface ChangePasswordRequest {
 
 // They client has called the server endpoint which then calls this
 // will keep in 1 method so its easy to follow
-export const changePassword = async (changePasswordInfo: ChangePasswordRequest) => {
+export const changePassword = async (
+  changePasswordInfo: ChangePasswordRequest
+) => {
   const userExists = await db.userExists(changePasswordInfo.username);
   if (!userExists) {
     throw new Error('Username doesnt exists');
@@ -444,9 +448,9 @@ export const changePassword = async (changePasswordInfo: ChangePasswordRequest) 
   await db.updateUser({
     username: changePasswordInfo.username,
     serverAuthenticationHash: serverAuthHashResult.serverAuthenticationHash,
-    salt: serverAuthHashResult.salt
+    salt: serverAuthHashResult.salt,
     encryptedPk: changePasswordInfo.encryptedKeyInfo.key,
-    encryptedPkIv: changePasswordInfo.encryptedKeyInfo.iv
+    encryptedPkIv: changePasswordInfo.encryptedKeyInfo.iv,
   });
 
   // done user has changed password!
@@ -594,7 +598,9 @@ export const encryptedInfo = async (
     encryptedInfo.serverAuthenticationHash
   );
   if (!serverHashMatchesClientHash) {
-    throw new Error('401 > this does not match the user auth token (wrong username + password).');
+    throw new Error(
+      '401 > this does not match the user auth token (wrong username + password).'
+    );
   }
 
   return {
@@ -619,7 +625,9 @@ interface ChangeUsernameRequest {
 
 // They client has called the server endpoint which then calls this
 // will keep in 1 method so its easy to follow
-export const changeUsername = async (changeUsernameInfo: ChangeUsernameRequest) => {
+export const changeUsername = async (
+  changeUsernameInfo: ChangeUsernameRequest
+) => {
   const userExists = await db.userExists(changeUsernameInfo.oldUsername);
   if (!userExists) {
     throw new Error('Username does not exists');
@@ -654,9 +662,9 @@ export const changeUsername = async (changeUsernameInfo: ChangeUsernameRequest) 
     oldUsername: changeUsernameInfo.oldUsername,
     newUsername: changeUsernameInfo.newUsername,
     serverAuthenticationHash: serverAuthHashResult.serverAuthenticationHash,
-    salt: serverAuthHashResult.salt
+    salt: serverAuthHashResult.salt,
     encryptedPk: changeUsernameInfo.encryptedKeyInfo.key,
-    encryptedPkIv: changeUsernameInfo.encryptedKeyInfo.iv
+    encryptedPkIv: changeUsernameInfo.encryptedKeyInfo.iv,
   });
 
   // done user has changed username!
@@ -807,7 +815,9 @@ export const encryptedInfo = async (
     encryptedInfo.serverAuthenticationHash
   );
   if (!serverHashMatchesClientHash) {
-    throw new Error('401 > this does not match the user auth token (wrong username + password).');
+    throw new Error(
+      '401 > this does not match the user auth token (wrong username + password).'
+    );
   }
 
   return {
@@ -832,7 +842,9 @@ interface OfflineRecoveryCodeRequest {
 
 // They client has called the server endpoint which then calls this
 // will keep in 1 method so its easy to follow
-export const saveGeneratedOfflineRecoveryCode = async (offlineRecoveryCodeRequest: OfflineRecoveryCodeRequest) => {
+export const saveGeneratedOfflineRecoveryCode = async (
+  offlineRecoveryCodeRequest: OfflineRecoveryCodeRequest
+) => {
   const userExists = await db.userExists(offlineRecoveryCodeRequest.username);
   if (!userExists) {
     throw new Error('Username does not exists');
@@ -869,9 +881,9 @@ export const saveGeneratedOfflineRecoveryCode = async (offlineRecoveryCodeReques
     username: changeUsernameInfo.username,
     recoveryCodeId: offlineRecoveryCodeRequest.recoveryCodeId,
     serverAuthenticationHash: serverAuthHashResult.serverAuthenticationHash,
-    salt: serverAuthHashResult.salt
+    salt: serverAuthHashResult.salt,
     encryptedPk: offlineRecoveryCodeRequest.encryptedKeyInfo.key,
-    encryptedPkIv: offlineRecoveryCodeRequest.encryptedKeyInfo.iv
+    encryptedPkIv: offlineRecoveryCodeRequest.encryptedKeyInfo.iv,
   });
 
   // done - user has saved the offline recovery code!
