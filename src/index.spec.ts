@@ -7,7 +7,9 @@ import {
   generateOfflineRecoveryCode,
   getAuthenticationToken,
   getRecoveryAuthenticationToken,
+  hashAuthenticationTokenOnServer,
   recoverWithOfflineCode,
+  serverHashMatchesClientHash,
   verifyEthereumAddress,
 } from './index';
 
@@ -171,5 +173,29 @@ describe('main functions', () => {
         recoveryResult.wallet.ethereumAddress
       )
     ).toEqual(true);
+  });
+
+  it('hashAuthenticationTokenOnServer + serverHashMatchesClientHash', async () => {
+    const username = 'ether.eth';
+    const password = 'eTHeReUm_ha4d_pa55W0Rd';
+    const authToken = await getAuthenticationToken(username, password);
+
+    const serverHash = await hashAuthenticationTokenOnServer(authToken);
+
+    expect(
+      await serverHashMatchesClientHash(
+        serverHash.salt,
+        authToken,
+        serverHash.serverAuthenticationHash
+      )
+    ).toEqual(true);
+
+    expect(
+      await serverHashMatchesClientHash(
+        serverHash.salt,
+        authToken,
+        await getAuthenticationToken(username, '1233')
+      )
+    ).toEqual(false);
   });
 });

@@ -345,13 +345,6 @@ export const hashAuthenticationTokenOnServer = async (
   };
 };
 
-export const generateAuthenticationTokenClientHashOnServer = async (
-  userStoredSalt: string,
-  clientAuthenticationToken: string
-): Promise<string> => {
-  return toHex(await generate(userStoredSalt, clientAuthenticationToken));
-};
-
 export const serverHashMatchesClientHash = async (
   userStoredSalt: string,
   clientAuthenticationToken: string,
