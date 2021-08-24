@@ -222,11 +222,21 @@ export const changeUsername = async (
   };
 };
 
+const _strictRecoveryIdFromOfflineCode = (offlineRecoveryCode: string) => {
+  return offlineRecoveryCode.substring(0, offlineRecoveryCode.length - 32);
+};
+
 export interface GenerateRecoveryCodeResponse {
-  // show this to the user to download or copy
-  // this is a way they can recover their account
-  // if they forgot their password
-  offlineRecoveryCode: string;
+  offlineRecoveryCode: {
+    // show this to the user to download or copy
+    // this is a way they can recover their account
+    // if they forgot their password
+    userCode: string;
+    // every code has an id linked to it so you can
+    // save a none sensitive value for when restoring
+    // from code
+    id: string;
+  };
   ethereumAddress: string;
   signature: string;
   // save to the server so you can
@@ -263,8 +273,13 @@ export const generateOfflineRecoveryCode = async (
     iv: toHex(iv),
   };
 
+  const offlineRecoveryCodeId = Buffer.from(generateBytes(16)).toString('hex');
+
   return {
-    offlineRecoveryCode,
+    offlineRecoveryCode: {
+      userCode: offlineRecoveryCode + offlineRecoveryCodeId,
+      id: offlineRecoveryCodeId,
+    },
     ethereumAddress: privateKeyToPublicKey(
       hexToUint8Array(decryptedWallet.privateKey)
     ),
@@ -281,7 +296,10 @@ export const getRecoveryAuthenticationToken = async (
   username: string,
   recoveryCode: string
 ) => {
-  return getAuthenticationToken(username, recoveryCode);
+  return getAuthenticationToken(
+    username,
+    _strictRecoveryIdFromOfflineCode(recoveryCode)
+  );
 };
 
 export const recoverWithOfflineCode = async (
@@ -292,7 +310,7 @@ export const recoverWithOfflineCode = async (
 ): Promise<EncryptedWallet> => {
   const decryptedWallet = await _decryptWallet(
     username,
-    recoveryCode,
+    _strictRecoveryIdFromOfflineCode(recoveryCode),
     encryptedKeyInfo
   );
 

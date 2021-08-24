@@ -739,7 +739,10 @@ export const generateOfflineRecoveryCode = async (
   );
   console.log(generateRecoveryCodeResponse);
   // {
-  //    offlineRecoveryCode: '0x1afeefac055cb16398f10dd401a38627e3439d6dc416139fe4a16ac9027c77385f96365b496c68c1d809ee0f24aa9bf443bfa6e3bf09cf0ff30c1d3974e5bb0a'
+  //    offlineRecoveryCode: {
+  //       userCode: '0x975d73660b0b2fc1823668769ba0a88ba3d39eece71d15abc25c2fd2e95f042822f85bba3fb98b3d6d7aea326e361ba5a12c494a2ef33d05e1617adb5e26a0e6362bd43d7da0a0e4963fbde594b3b9ed',
+  //       id: '362bd43d7da0a0e4963fbde594b3b9ed'
+    }
   //    ethereumAddress: '0xa31e0D672AA9c6c4Ce863Bd17d1c7c9d6C56D5E8',
   //    signature: '0xf09eb344c7cbe4aebd7c3d2109eeddd5a3f1ec6a445a26ed1c46f47bce902a274af03b86f19557026055467a796a7e76be4c1fdd19132fd102097abe3124af081c',
   //    userAuthenticationToken: '0xace36d94ae1397b87135d363f207a440c5b30a0f2ce2ebf181b6ded0df9c84e7',
@@ -749,9 +752,9 @@ export const generateOfflineRecoveryCode = async (
   //    }
   //}
 
-  // TODO LOOK AT FLOW OF PASSING IN A RECOVERY CODE ID FOR LOOKUP?!
   const request = {
     username,
+    recoveryCodeId: generateRecoveryCodeResponse.offlineRecoveryCode.id,
     ethereumAddress: encryptedWallet.ethereumAddress,
     signature: encryptedWallet.signature,
     userRecoveryCodeAuthenticationToken:
@@ -817,6 +820,7 @@ export const encryptedInfo = async (
 
 interface OfflineRecoveryCodeRequest {
   username: string;
+  recoveryCodeId: string;
   ethereumAddress: string;
   signature: string;
   userRecoveryCodeAuthenticationToken: string;
@@ -834,11 +838,11 @@ export const saveGeneratedOfflineRecoveryCode = async (offlineRecoveryCodeReques
     throw new Error('Username does not exists');
   }
 
-  const ethereumAddressExists = await db.ethereumAddressExists(
-    offlineRecoveryCodeRequest.ethereumAddress
+  const recoveryCodeExists = await db.recoveryCodeExists(
+    offlineRecoveryCodeRequest.recoveryCodeId
   );
-  if (ethereumAddressExists) {
-    throw new Error('Ethereum address already exists');
+  if (recoveryCodeExists) {
+    throw new Error('Recovery code id already exists');
   }
 
   const ownsEthereumAddress = await verifyEthereumAddress(
@@ -853,7 +857,7 @@ export const saveGeneratedOfflineRecoveryCode = async (offlineRecoveryCodeReques
   }
 
   const serverAuthHashResult = await hashAuthenticationTokenOnServer(
-    changeUsernameInfo.userRecoveryCodeAuthenticationToken
+    offlineRecoveryCodeRequest.userRecoveryCodeAuthenticationToken
   );
   console.log(serverAuthHashResult);
   // {
@@ -863,13 +867,14 @@ export const saveGeneratedOfflineRecoveryCode = async (offlineRecoveryCodeReques
 
   await db.saveOfflineRecoveryCode({
     username: changeUsernameInfo.username,
+    recoveryCodeId: offlineRecoveryCodeRequest.recoveryCodeId,
     serverAuthenticationHash: serverAuthHashResult.serverAuthenticationHash,
     salt: serverAuthHashResult.salt
-    encryptedPk: changeUsernameInfo.encryptedKeyInfo.key,
-    encryptedPkIv: changeUsernameInfo.encryptedKeyInfo.iv
+    encryptedPk: offlineRecoveryCodeRequest.encryptedKeyInfo.key,
+    encryptedPkIv: offlineRecoveryCodeRequest.encryptedKeyInfo.iv
   });
 
-  // done user has saved the offline recovery code!
+  // done - user has saved the offline recovery code!
 };
 ```
 

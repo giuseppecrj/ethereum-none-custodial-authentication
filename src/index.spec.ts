@@ -143,9 +143,18 @@ describe('main functions', () => {
       encryptedKeyInfo
     );
 
+    expect(generateRecoveryCodeResponse.offlineRecoveryCode.id).toHaveLength(
+      32
+    );
+    expect(
+      generateRecoveryCodeResponse.offlineRecoveryCode.userCode.substring(
+        generateRecoveryCodeResponse.offlineRecoveryCode.userCode.length - 32
+      )
+    ).toEqual(generateRecoveryCodeResponse.offlineRecoveryCode.id);
+
     const authToken = await getRecoveryAuthenticationToken(
       username,
-      generateRecoveryCodeResponse.offlineRecoveryCode
+      generateRecoveryCodeResponse.offlineRecoveryCode.userCode
     );
     expect(authToken).toEqual(
       generateRecoveryCodeResponse.userRecoveryCodeAuthenticationToken
@@ -153,7 +162,7 @@ describe('main functions', () => {
 
     const recoveryResult = await recoverWithOfflineCode(
       username,
-      generateRecoveryCodeResponse.offlineRecoveryCode,
+      generateRecoveryCodeResponse.offlineRecoveryCode.userCode,
       password,
       generateRecoveryCodeResponse.encryptedKeyInfo
     );
