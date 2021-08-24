@@ -30,7 +30,7 @@ This will walk you through the usage of the package with flow diagrams explainin
 
 ### New wallet
 
-You must do the checking yourself if the username already exists as you are managing this on your server. The new user can not conflict with another username on your server. Just as facebook/twitter/google/etc work.
+Creating a new user.
 
 #### Flow
 
