@@ -16,7 +16,7 @@ import {
   generateBytes,
   hexToUnit8Array,
   removeLeading0x,
-  uint8ArrayToHex,
+  toHex,
 } from './helpers';
 
 const decompress = (startsWith02Or03: string) => {
@@ -24,8 +24,9 @@ const decompress = (startsWith02Or03: string) => {
   const testBuffer = Buffer.from(startsWith02Or03, 'hex');
   if (testBuffer.length === 64) startsWith02Or03 = '04' + startsWith02Or03;
 
-  let decompressed = uint8ArrayToHex(
-    publicKeyConvert(hexToUnit8Array(startsWith02Or03), false)
+  let decompressed = toHex(
+    publicKeyConvert(hexToUnit8Array(startsWith02Or03), false),
+    false
   );
 
   // remove trailing 04
@@ -85,13 +86,14 @@ export const recoverPublicKey = (signature: string, hash: string) => {
 
   const recoveryNumber = vValue === '1c' ? 1 : 0;
 
-  let pubKey = uint8ArrayToHex(
+  let pubKey = toHex(
     ecdsaRecover(
       hexToUnit8Array(sigOnly),
       recoveryNumber,
       hexToUnit8Array(removeLeading0x(hash)),
       false
-    )
+    ),
+    false
   );
 
   // remove trailing '04'

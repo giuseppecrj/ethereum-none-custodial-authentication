@@ -273,7 +273,7 @@ export const generateOfflineRecoveryCode = async (
     iv: toHex(iv),
   };
 
-  const offlineRecoveryCodeId = Buffer.from(generateBytes(16)).toString('hex');
+  const offlineRecoveryCodeId = toHex(generateBytes(16), false);
 
   return {
     offlineRecoveryCode: {
