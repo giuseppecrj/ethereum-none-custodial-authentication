@@ -222,8 +222,14 @@ export const changeUsername = async (
   };
 };
 
-const _strictRecoveryIdFromOfflineCode = (offlineRecoveryCode: string) => {
+const _stripRecoveryIdFromOfflineRecoveryCode = (
+  offlineRecoveryCode: string
+) => {
   return offlineRecoveryCode.substring(0, offlineRecoveryCode.length - 32);
+};
+
+const _getRecoveryIdFromOfflineCode = (offlineRecoveryCode: string) => {
+  return offlineRecoveryCode.substring(offlineRecoveryCode.length - 32);
 };
 
 export interface GenerateRecoveryCodeResponse {
@@ -292,14 +298,22 @@ export const generateOfflineRecoveryCode = async (
   };
 };
 
-export const getRecoveryAuthenticationToken = async (
+export interface OfflineRecoveryAuthenticationInfo {
+  recoveryAuthenticationToken: string;
+  recoveryId: string;
+}
+
+export const getOfflineRecoveryAuthenticationInfo = async (
   username: string,
   recoveryCode: string
-) => {
-  return getAuthenticationToken(
-    username,
-    _strictRecoveryIdFromOfflineCode(recoveryCode)
-  );
+): Promise<OfflineRecoveryAuthenticationInfo> => {
+  return {
+    recoveryAuthenticationToken: await getAuthenticationToken(
+      username,
+      _stripRecoveryIdFromOfflineRecoveryCode(recoveryCode)
+    ),
+    recoveryId: _getRecoveryIdFromOfflineCode(recoveryCode),
+  };
 };
 
 export const recoverWithOfflineCode = async (
@@ -310,7 +324,7 @@ export const recoverWithOfflineCode = async (
 ): Promise<EncryptedWallet> => {
   const decryptedWallet = await _decryptWallet(
     username,
-    _strictRecoveryIdFromOfflineCode(recoveryCode),
+    _stripRecoveryIdFromOfflineRecoveryCode(recoveryCode),
     encryptedKeyInfo
   );
 

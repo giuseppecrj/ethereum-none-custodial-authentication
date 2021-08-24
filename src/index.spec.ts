@@ -6,7 +6,7 @@ import {
   EncryptedKeyInfo,
   generateOfflineRecoveryCode,
   getAuthenticationToken,
-  getRecoveryAuthenticationToken,
+  getOfflineRecoveryAuthenticationInfo,
   hashAuthenticationTokenOnServer,
   recoverWithOfflineCode,
   serverHashMatchesClientHash,
@@ -130,7 +130,7 @@ describe('main functions', () => {
     ).toEqual(true);
   });
 
-  it('generateOfflineRecoveryCode + recoverWithOfflineCode + getRecoveryAuthenticationToken round trip', async () => {
+  it('generateOfflineRecoveryCode + recoverWithOfflineCode + getOfflineRecoveryAuthenticationInfo round trip', async () => {
     const username = 'ether2.eth';
     const password = 'eTHeReUm_ha4d_pa55W0Rd222';
     const encryptedKeyInfo: EncryptedKeyInfo = {
@@ -152,12 +152,16 @@ describe('main functions', () => {
       )
     ).toEqual(generateRecoveryCodeResponse.offlineRecoveryCode.id);
 
-    const authToken = await getRecoveryAuthenticationToken(
-      username,
-      generateRecoveryCodeResponse.offlineRecoveryCode.userCode
-    );
-    expect(authToken).toEqual(
+    const recoveryAuthenticationInfo =
+      await getOfflineRecoveryAuthenticationInfo(
+        username,
+        generateRecoveryCodeResponse.offlineRecoveryCode.userCode
+      );
+    expect(recoveryAuthenticationInfo.recoveryAuthenticationToken).toEqual(
       generateRecoveryCodeResponse.userRecoveryCodeAuthenticationToken
+    );
+    expect(recoveryAuthenticationInfo.recoveryId).toEqual(
+      generateRecoveryCodeResponse.offlineRecoveryCode.id
     );
 
     const recoveryResult = await recoverWithOfflineCode(
