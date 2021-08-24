@@ -390,11 +390,6 @@ export const encryptedInfo = async (
     encryptedInfoRequest.userAuthenticationToken,
     encryptedInfo.serverAuthenticationHash
   );
-  console.log(serverHashMatchesClientHash);
-  // {
-  //    salt: '0x2e7199cd889426be35d730aabc3fa073',
-  //    serverAuthenticationHash: '0xf06e83e0086d2546cc7730eeee08bc739daa2af80fb34691ebc0a0964b96eb34',
-  //}
   if (!serverHashMatchesClientHash) {
     throw new Error('Incorrect login.');
   }
@@ -422,8 +417,8 @@ interface ChangePasswordRequest {
 // will keep in 1 method so its easy to follow
 export const changePassword = async (changePasswordInfo: ChangePasswordRequest) => {
   const userExists = await db.userExists(changePasswordInfo.username);
-  if (userExists) {
-    throw new Error('Username already exists');
+  if (!userExists) {
+    throw new Error('Username doesnt exists');
   }
 
   const ethereumAddressExists = await db.ethereumAddressExists(
@@ -447,6 +442,11 @@ export const changePassword = async (changePasswordInfo: ChangePasswordRequest) 
   const serverAuthHashResult = await hashAuthenticationTokenOnServer(
     changePasswordInfo.userAuthenticationToken
   );
+  console.log(serverAuthHashResult);
+  // {
+  //    salt: '0x2e7199cd889426be35d730aabc3fa073',
+  //    serverAuthenticationHash: '0xf06e83e0086d2546cc7730eeee08bc739daa2af80fb34691ebc0a0964b96eb34',
+  //}
 
   await db.updateUser({
     username: changePasswordInfo.username,
@@ -462,73 +462,219 @@ export const changePassword = async (changePasswordInfo: ChangePasswordRequest) 
 
 ### Change username
 
-You must do the checking yourself if the username already exists as you are managing this on your server. In this case if they are changing to a new username it can not conflict with another username on your server. Just as facebook/twitter/google/etc work.
-
 #### Flow
 
 ![change username flow](sequences/4.change-username.svg)
 
-If a user wants wants to change their username you need to call:
+##### Client
 
 ```ts
-import { changeUsername } from 'ethereum-web2-encryption';
-...
-const encryptedWallet = await changeUsername(
-  { oldUsername: 'THE_USERSNAME', newUsername: 'NEW_USERSNAME' },
-  USERS_STRONG_PASSWORD,
-  {
-    key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
-    iv: '0xa3b054976a6ffc7fa1c527577480b663',
-  }
-);
-console.log(encryptedWallet);
-// {
-//    wallet: {
-//        ethereumAddress: '0xa31e0D672AA9c6c4Ce863Bd17d1c7c9d6C56D5E8',
-//        privateKey: '0x602cbc76611ae50bcff99beacb4ab8e84853830f3036da946a8473107c4056e8',
-//    },
-//    userAuthenticationToken: '0xjhk77d82gj1397b87135d363f207a440c5b30a0f2ce2ebf181b6ded0df9c67v1',
-//   encryptedKeyInfo: {
-//       key: '0xh3457h9b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3kg3c7m',
-//        iv: '0xn6j876576a6ffc7fa1c567573480j9876',
-//    }
-//}
+import {
+  getAuthenticationToken,
+  changeUsername,
+} from 'ethereum-web2-encryption';
+
+// They have just clicked the change password and entered their username and password
+// to confirm they want to do it
+export const getEncryptedInformation = async (
+  username: string,
+  password: string
+) => {
+  const authenticationToken = await getAuthenticationToken(username, password);
+
+  const request = {
+    username,
+    userAuthenticationToken: encryptedWallet.userAuthenticationToken,
+  };
+
+  // look at server part below to see what your server is expected to do
+  const response = await fetch('YOUR_SERVER_API_GET_ENCRYPTED_INFO_ENDPOINT', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  const encryptedWallet = await response.json();
+  console.log(encryptedWallet);
+  // {
+  //   encryptedKeyInfo: {
+  //       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
+  //       iv: '0xa3b054976a6ffc7fa1c527577480b663',
+  //    }
+  //}
+
+  // the user now needs to enter their new password, you should hold the
+  // the encryptedKeyInfo somewhere ready for the next method below
+  // below method should you what the next steps are
+};
+
+interface ChangeEmailRequest {
+  oldUsername: string;
+  newUsername: string;
+  password: string;
+  encryptedKeyInfo: { key: string; iv: string };
+}
+
+// They have just clicked change email entered their new password and pressed enter
+export const changeEmail = async (changeEmailRequest: ChangeEmailRequest) => {
+  const authenticationToken = await getAuthenticationToken(
+    changeEmailRequest.oldUsername,
+    changeEmailRequest.newPassword
+  );
+
+  const encryptedWallet = await changeUsername(
+    {
+      oldUsername: changeEmailRequest.oldUsername,
+      newUsername: changeEmailRequest.newUsername,
+    },
+    changeEmailRequest.password,
+    changeEmailRequest.encryptedKeyInfo
+  );
+  console.log(encryptedWallet);
+  // {
+  //    wallet: {
+  //        ethereumAddress: '0xa31e0D672AA9c6c4Ce863Bd17d1c7c9d6C56D5E8',
+  //        privateKey: '0x602cbc76611ae50bcff99beacb4ab8e84853830f3036da946a8473107c4056e8',
+  //    },
+  //    signature: '0xf09eb344c7cbe4aebd7c3d2109eeddd5a3f1ec6a445a26ed1c46f47bce902a274af03b86f19557026055467a796a7e76be4c1fdd19132fd102097abe3124af081c',
+  //    userAuthenticationToken: '0xace36d94ae1397b87135d363f207a440c5b30a0f2ce2ebf181b6ded0df9c84e7',
+  //   encryptedKeyInfo: {
+  //       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
+  //       iv: '0xa3b054976a6ffc7fa1c527577480b663',
+  //    }
+  //}
+
+  // TODO LOOK AT FLOW OF PASSING OLD AUTHENTICATION TOKEN IN?!?!
+  const request = {
+    oldUsername,
+    newUsername,
+    ethereumAddress: encryptedWallet.ethereumAddress,
+    signature: encryptedWallet.signature,
+    userAuthenticationToken: encryptedWallet.userAuthenticationToken,
+    encryptedKeyInfo: encryptedWallet.encryptedKeyInfo,
+  };
+  // look at server part below to see what your server is expected to do
+  await fetch('YOUR_SERVER_API_CHANGE_USERNAME_ENDPOINT', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  // change email is done!
+};
 ```
 
-#### Response
-
-save the new `userAuthenticationToken` and `encryptedKeyInfo` to your server. Deleting the old `userAuthenticationToken` and `encryptedKeyInfo`.
+##### Server
 
 ```ts
-export interface EncryptedWallet {
-  // The wallet details this contains
-  // the ethereum address and private key
-  // you MUST not upload that private key anywhere
-  // to be able to stay none custodial. That private key
-  // is the ethereum wallet private key. As long as it stays
-  // on your client then its all good!
-  wallet: {
-    ethereumAddress: string;
-    privateKey: string;
-  };
-  // You must save all of the below to a server somewhere
-  // this data is not senitive and if someone got it they
-  // couldn't do much with it minus brute force the decryption.
-  // If you lose this data then they will not be able to get back
-  // to their private key so it must be stored safe
+import {
+  verifyEthereumAddress,
+  hashAuthenticationTokenOnServer,
+  serverHashMatchesClientHash,
+} from 'ethereum-web2-encryption';
+import db from 'YOUR_DB';
 
-  // This is basically an authentication token to be able to
-  // give the user back their encryptedPk key and iv. This is a hash
-  // of the users master_key (the users username and password). We will
-  // explain this usage a little later
+interface EncryptedInfoRequest {
+  username: string;
   userAuthenticationToken: string;
-  // This is the encrypted private key which can be decrypted
-  // with the master_key to get back to the ethereum private key
+}
+
+// They client has called the server endpoint which then calls this
+// will keep in 1 method so its easy to follow
+export const encryptedInfo = async (
+  encryptedInfoRequest: EncryptedInfoRequest
+) => {
+  const encryptedInfo = await db.userAuthenticationInfo(
+    encryptedInfoRequest.username
+  );
+  if (!encryptedInfo) {
+    throw new Error('User does not exists');
+  }
+
+  const serverHashMatchesClientHash = await serverHashMatchesClientHash(
+    encryptedInfo.salt,
+    encryptedInfoRequest.userAuthenticationToken,
+    encryptedInfo.serverAuthenticationHash
+  );
+  if (!serverHashMatchesClientHash) {
+    throw new Error('Incorrect login.');
+  }
+
+  return {
+    encryptedKeyInfo: {
+      key: userAuthenticationInfo.encryptedPk,
+      iv: userAuthenticationInfo.encryptedPkIv,
+    },
+  };
+};
+
+interface ChangeUsernameRequest {
+  oldUsername: string;
+  newUsername: string;
+  ethereumAddress: string;
+  signature: string;
+  userAuthenticationToken: string;
   encryptedKeyInfo: {
     key: string;
     iv: string;
   };
 }
+
+// They client has called the server endpoint which then calls this
+// will keep in 1 method so its easy to follow
+export const changeUsername = async (changeUsernameInfo: ChangeUsernameRequest) => {
+  const userExists = await db.userExists(changeUsernameInfo.oldUsername);
+  if (!userExists) {
+    throw new Error('Username does not exists');
+  }
+
+  const newUserExists = await db.userExists(changeUsernameInfo.newUsername);
+  if (newUserExists) {
+    throw new Error('Username already exists');
+  }
+
+  const ethereumAddressExists = await db.ethereumAddressExists(
+    changeUsernameInfo.ethereumAddress
+  );
+  if (ethereumAddressExists) {
+    throw new Error('Ethereum address already exists');
+  }
+
+  const ownsEthereumAddress = await verifyEthereumAddress(
+    changeUsernameInfo.signature,
+    changeUsernameInfo.encryptedKeyInfo,
+    changeUsernameInfo.ethereumAddress
+  );
+  if (!ownsEthereumAddress) {
+    throw new Error(
+      'You do not own the ethereum address so can not register you'
+    );
+  }
+
+  const serverAuthHashResult = await hashAuthenticationTokenOnServer(
+    changeUsernameInfo.userAuthenticationToken
+  );
+  console.log(serverAuthHashResult);
+  // {
+  //    salt: '0x2e7199cd889426be35d730aabc3fa073',
+  //    serverAuthenticationHash: '0xf06e83e0086d2546cc7730eeee08bc739daa2af80fb34691ebc0a0964b96eb34',
+  //}
+
+  await db.updateUser({
+    oldUsername: changeUsernameInfo.oldUsername,
+    newUsername: changeUsernameInfo.newUsername,
+    serverAuthenticationHash: serverAuthHashResult.serverAuthenticationHash,
+    salt: serverAuthHashResult.salt
+    encryptedPk: changeUsernameInfo.encryptedKeyInfo.key,
+    encryptedPkIv: changeUsernameInfo.encryptedKeyInfo.iv
+  });
+
+  // done user has changed username!
+};
 ```
 
 ### Recovery
