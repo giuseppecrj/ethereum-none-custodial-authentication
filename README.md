@@ -36,7 +36,7 @@ Creating a new user.
 
 ![create wallet flow](sequences/1.create-wallet.svg)
 
-Code example this includes client + serverside.
+Code example this includes client + server.
 
 ##### Client
 
@@ -66,10 +66,7 @@ export const register = async (username: string, password: string) => {
     ethereumAddress: encryptedWallet.ethereumAddress,
     signature: encryptedWallet.signature,
     userAuthenticationToken: encryptedWallet.userAuthenticationToken,
-    encryptedKeyInfo: {
-      key: encryptedWallet.encryptedKeyInfo.key,
-      iv: encryptedWallet.encryptedKeyInfo.iv,
-    },
+    encryptedKeyInfo: encryptedWallet.encryptedKeyInfo,
   };
 
   // look at server part below to see what your server is expected to do
@@ -139,7 +136,7 @@ export const register = async (registerInfo: RegisterRequest) => {
     username: registerInfo.username,
     ethereumAddress: registerInfo.ethereumAddress,
     serverAuthenticationHash: serverAuthHashResult.serverAuthenticationHash,
-    salt: serverAuthHashResult.serverAuthenticationHash
+    salt: serverAuthHashResult.salt
     encryptedPk: registerInfo.encryptedKeyInfo.key,
     encryptedPkIv: registerInfo.encryptedKeyInfo.iv
   });
