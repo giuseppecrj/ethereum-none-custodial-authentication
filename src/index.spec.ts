@@ -171,6 +171,10 @@ describe('main functions', () => {
       generateRecoveryCodeResponse.encryptedKeyInfo
     );
 
+    expect(recoveryResult.offlineRecoveryId).toEqual(
+      generateRecoveryCodeResponse.offlineRecoveryCode.id
+    );
+
     expect(recoveryResult.wallet.ethereumAddress).toEqual(
       '0xbD89Be78eb4280BAaa0fd8C0426159E893bd133d'
     );

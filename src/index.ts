@@ -316,12 +316,16 @@ export const getOfflineRecoveryAuthenticationInfo = async (
   };
 };
 
+export interface RecoveryEncryptedWallet extends EncryptedWallet {
+  offlineRecoveryId: string;
+}
+
 export const recoverWithOfflineCode = async (
   username: string,
   recoveryCode: string,
   newPassword: string,
   encryptedKeyInfo: EncryptedKeyInfo
-): Promise<EncryptedWallet> => {
+): Promise<RecoveryEncryptedWallet> => {
   const decryptedWallet = await _decryptWallet(
     username,
     _stripRecoveryIdFromOfflineRecoveryCode(recoveryCode),
@@ -348,6 +352,7 @@ export const recoverWithOfflineCode = async (
       ),
       privateKey: decryptedWallet.privateKey,
     },
+    offlineRecoveryId: _getRecoveryIdFromOfflineCode(recoveryCode),
     signature: _createSignature(
       decryptedWallet.privateKey,
       newEncryptedKeyInfo
