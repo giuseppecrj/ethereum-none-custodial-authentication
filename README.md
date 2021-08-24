@@ -36,58 +36,116 @@ You must do the checking yourself if the username already exists as you are mana
 
 ![create wallet flow](sequences/1.create-wallet.svg)
 
-If a user wants to create a new wallet you need to call:
+Code example this includes client + serverside.
+
+##### Client
 
 ```ts
 import { createNewWallet } from 'ethereum-web2-encryption';
 
-const encryptedWallet = createWallet('THE_USERSNAME', 'USERS_STRONG_PASSWORD');
-console.log(encryptedWallet);
-// {
-//    wallet: {
-//        ethereumAddress: '0xa31e0D672AA9c6c4Ce863Bd17d1c7c9d6C56D5E8',
-//        privateKey: '0x602cbc76611ae50bcff99beacb4ab8e84853830f3036da946a8473107c4056e8',
-//    },
-//    userAuthenticationToken: '0xace36d94ae1397b87135d363f207a440c5b30a0f2ce2ebf181b6ded0df9c84e7',
-//   encryptedKeyInfo: {
-//       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
-//       iv: '0xa3b054976a6ffc7fa1c527577480b663',
-//    }
-//}
+// They have just clicked the register button after entering
+// their username and password
+export const register = async (username: string, password: string) => {
+  const encryptedWallet = await createWallet(username, password);
+  console.log(encryptedWallet);
+  // {
+  //    wallet: {
+  //        ethereumAddress: '0xa31e0D672AA9c6c4Ce863Bd17d1c7c9d6C56D5E8',
+  //        privateKey: '0x602cbc76611ae50bcff99beacb4ab8e84853830f3036da946a8473107c4056e8',
+  //    },
+  //    signature: '0xf09eb344c7cbe4aebd7c3d2109eeddd5a3f1ec6a445a26ed1c46f47bce902a274af03b86f19557026055467a796a7e76be4c1fdd19132fd102097abe3124af081c',
+  //    userAuthenticationToken: '0xace36d94ae1397b87135d363f207a440c5b30a0f2ce2ebf181b6ded0df9c84e7',
+  //   encryptedKeyInfo: {
+  //       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
+  //       iv: '0xa3b054976a6ffc7fa1c527577480b663',
+  //    }
+  //}
+
+  const request = {
+    username,
+    ethereumAddress: encryptedWallet.ethereumAddress,
+    signature: encryptedWallet.signature,
+    userAuthenticationToken: encryptedWallet.userAuthenticationToken,
+    encryptedKeyInfo: {
+      key: encryptedWallet.encryptedKeyInfo.key,
+      iv: encryptedWallet.encryptedKeyInfo.iv,
+    },
+  };
+
+  // look at server part below to see what your server is expected to do
+  await fetch('YOUR_SERVER_API_REGISTER_ENDPOINT', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request), // body data type must match "Content-Type" header
+  });
+
+  // done user is registered!
+};
 ```
 
-#### Response
+##### Server
 
 ```ts
-export interface EncryptedWallet {
-  // The wallet details this contains
-  // the ethereum address and private key
-  // you MUST not upload that private key anywhere
-  // to be able to stay none custodial. That private key
-  // is the ethereum wallet private key. As long as it stays
-  // on your client then its all good!
-  wallet: {
-    ethereumAddress: string;
-    privateKey: string;
-  };
-  // You must save all of the below to a server somewhere
-  // this data is not senitive and if someone got it they
-  // couldn't do much with it minus brute force the decryption.
-  // If you lose this data then they will not be able to get back
-  // to their private key so it must be stored safe
+import {
+  verifyEthereumAddress,
+  hashAuthenticationTokenOnServer,
+} from 'ethereum-web2-encryption';
+import db from 'YOUR_DB';
 
-  // This is basically an authentication token to be able to
-  // give the user back their encryptedPk key and iv. This is a hash
-  // of the users master_key (the users username and password). We will
-  // explain this usage a little later
+interface RegisterRequest {
+  username: string;
+  ethereumAddress: string;
+  signature: string;
   userAuthenticationToken: string;
-  // This is the encrypted key which can be decrypted
-  // with the master_key to get back to the ethereum private key
   encryptedKeyInfo: {
     key: string;
     iv: string;
   };
 }
+
+// They client has called the server endpoint which then calls this
+// will keep in 1 method so its easy to follow
+export const register = async (registerInfo: RegisterRequest) => {
+  const userExists = await db.userExists(registerInfo.username);
+  if (userExists) {
+    throw new Error('Username already exists');
+  }
+
+  const ethereumAddressExists = await db.ethereumAddressExists(
+    registerInfo.ethereumAddress
+  );
+  if (ethereumAddressExists) {
+    throw new Error('Ethereum address already exists');
+  }
+
+  const ownsEthereumAddress = await verifyEthereumAddress(
+    registerInfo.signature,
+    registerInfo.encryptedKeyInfo,
+    registerInfo.ethereumAddress
+  );
+  if (!ownsEthereumAddress) {
+    throw new Error(
+      'You do not own the ethereum address so can not register you'
+    );
+  }
+
+  const serverAuthHashResult = await hashAuthenticationTokenOnServer(
+    registerInfo.userAuthenticationToken
+  );
+
+  await db.createNewUser({
+    username: registerInfo.username,
+    ethereumAddress: registerInfo.ethereumAddress,
+    serverAuthenticationHash: serverAuthHashResult.serverAuthenticationHash,
+    salt: serverAuthHashResult.serverAuthenticationHash
+    encryptedPk: registerInfo.encryptedKeyInfo.key,
+    encryptedPkIv: registerInfo.encryptedKeyInfo.iv
+  });
+
+  // done user is registered!
+};
 ```
 
 ### Login existing wallet
