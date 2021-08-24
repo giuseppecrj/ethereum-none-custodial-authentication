@@ -8,7 +8,7 @@ All the decryption will happen on the client side and you will just need a serve
 
 Just to note using this kind of encryption is as safe as the username and password the user gives. The package does not force max contraints on the usage, it is up to you to decide how you want to force the user to make sure they enter a strong password and username. We strongly advise you force a strong password on creation of wallets to protect your user. We would not promote this approach for long term storing of crypto either, you can see this logic more as a hot/burner wallet aka your users can use this to interact with your dApp easily and safely. Supporting them without an extension just the native browser.
 
-This model is based on the same model `LastPass` use for their none custodial password manager. I have just introduced ethereum private keys without the flows.
+This model is based on the same model `LastPass` use for their none custodial password manager. It is also heavily influenced by how the none custodial `FunWallet` works.
 
 ## Install package
 
