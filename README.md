@@ -168,7 +168,7 @@ export const login = async (username: string, password: string) => {
 
   const request = {
     username,
-    userAuthenticationToken: encryptedWallet.userAuthenticationToken,
+    userAuthenticationToken: authenticationToken,
   };
 
   // look at server part below to see what your server is expected to do
@@ -180,8 +180,8 @@ export const login = async (username: string, password: string) => {
     body: JSON.stringify(request),
   });
 
-  const encryptedWallet = await response.json();
-  console.log(encryptedWallet);
+  const encryptedKeyInfo = await response.json();
+  console.log(encryptedKeyInfo);
   // {
   //   encryptedKeyInfo: {
   //       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
@@ -192,7 +192,7 @@ export const login = async (username: string, password: string) => {
   const decryptedWallet = await decryptWallet(
     username,
     password,
-    encryptedWallet.encryptedKeyInfo
+    encryptedKeyInfo
   );
   console.log(decryptedWallet);
   // {
@@ -287,8 +287,8 @@ export const getEncryptedInformation = async (
     body: JSON.stringify(request),
   });
 
-  const encryptedWallet = await response.json();
-  console.log(encryptedWallet);
+  const encryptedKeyInfo = await response.json();
+  console.log(encryptedKeyInfo);
   // {
   //   encryptedKeyInfo: {
   //       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
@@ -493,8 +493,8 @@ export const getEncryptedInformation = async (
     body: JSON.stringify(request),
   });
 
-  const encryptedWallet = await response.json();
-  console.log(encryptedWallet);
+  const encryptedKeyInfo = await response.json();
+  console.log(encryptedKeyInfo);
   // {
   //   encryptedKeyInfo: {
   //       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
@@ -537,7 +537,7 @@ export const changeEmail = async (changeEmailRequest: ChangeEmailRequest) => {
   //    },
   //    signature: '0xf09eb344c7cbe4aebd7c3d2109eeddd5a3f1ec6a445a26ed1c46f47bce902a274af03b86f19557026055467a796a7e76be4c1fdd19132fd102097abe3124af081c',
   //    userAuthenticationToken: '0xace36d94ae1397b87135d363f207a440c5b30a0f2ce2ebf181b6ded0df9c84e7',
-  //   encryptedKeyInfo: {
+  //    encryptedKeyInfo: {
   //       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
   //       iv: '0xa3b054976a6ffc7fa1c527577480b663',
   //    }
@@ -711,8 +711,8 @@ export const getEncryptedInformation = async (
     body: JSON.stringify(request),
   });
 
-  const encryptedWallet = await response.json();
-  console.log(encryptedWallet);
+  const encryptedKeyInfo = await response.json();
+  console.log(encryptedKeyInfo);
   // {
   //   encryptedKeyInfo: {
   //       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
@@ -898,83 +898,231 @@ If the user wants to recover remember you got their recovery encrypted data on t
 
 ![recover with offline code flow](sequences/6.recover-with-offline-code.svg)
 
-##### Recovery authentication token
-
-Firstly you need to generate the recovery authentication token (hash of the recovery_master_key):
+##### Client
 
 ```ts
-import { getRecoveryAuthenticationToken } from 'ethereum-web2-encryption';
-...
-const recoveryAuthenticationToken = await getRecoveryAuthenticationToken(
-  'THE_USERSNAME',
-  'OFFLINE_RECOVERY_CODE'
-);
-console.log(recoveryAuthenticationToken);
-// 0xace36d94ae1397b87135d363f207a440c5b30a0f2ce2ebf181b6ded0df9c84e7
-```
+import {
+  getOfflineRecoveryAuthenticationInfo,
+  recoverWithOfflineCode,
+} from 'ethereum-web2-encryption';
 
-you then as explained above - "ends the server the `userRecoveryCodeAuthenticationToken` which if matches that username you got mapped returns the `encryptedKeyInfo` for that token". At this point you got the `recoveryEncryptedKeyInfo`
+// They have just submitted the recover by entered their username and offline recovery code
+// on the UI
+export const getRecoveryEncryptedInformation = async (
+  username: string,
+  offlineRecoveryId: string
+) => {
+  const recoveryAuthenticationInfo = await getOfflineRecoveryAuthenticationInfo(
+    username,
+    password
+  );
 
-```ts
-import { recoverWithOfflineCode } from 'ethereum-web2-encryption';
-...
-const recoveryCodeResponse = await recoverWithOfflineCode(
-  'THE_USERNAME',
-  'RECOVERY_CODE',
-  'USERS_NEW_STRONG_PASSWORD',
-  {
-    key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
-    iv: '0xa3b054976a6ffc7fa1c527577480b663',
-  }
-);
-console.log(recoveryCodeResponse);
-// {
-//    wallet: {
-//        ethereumAddress: '0xa31e0D672AA9c6c4Ce863Bd17d1c7c9d6C56D5E8',
-//        privateKey: '0x602cbc76611ae50bcff99beacb4ab8e84853830f3036da946a8473107c4056e8',
-//    },
-//    userAuthenticationToken: '0xjhk77d82gj1397b87135d363f207a440c5b30a0f2ce2ebf181b6ded0df9c67v1',
-//    encryptedKeyInfo: {
-//       key: '0xh3457h9b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3kg3c7m',
-//        iv: '0xn6j876576a6ffc7fa1c567573480j9876',
-//    }
-//}
-```
-
-##### Response
-
-save the new recovery `userAuthenticationToken` and `encryptedKeyInfo` to your server. Deleting the old `userAuthenticationToken` and `encryptedKeyInfo`. Also deleting any reference to the `userRecoveryCodeAuthenticationToken` and its `encryptedKeyInfo` from your server.
-
-```ts
-export interface EncryptedWallet {
-  // The wallet details this contains
-  // the ethereum address and private key
-  // you MUST not upload that private key anywhere
-  // to be able to stay none custodial. That private key
-  // is the ethereum wallet private key. As long as it stays
-  // on your client then its all good!
-  wallet: {
-    ethereumAddress: string;
-    privateKey: string;
+  const request = {
+    username,
+    recoveryAuthenticationToken:
+      recoveryAuthenticationInfo.recoveryAuthenticationToken,
+    offlineRecoveryCodeId: recoveryAuthenticationInfo.recoveryId,
   };
-  // You must save all of the below to a server somewhere
-  // this data is not senitive and if someone got it they
-  // couldn't do much with it minus brute force the decryption.
-  // If you lose this data then they will not be able to get back
-  // to their private key so it must be stored safe
 
-  // This is basically an authentication token to be able to
-  // give the user back their encryptedPk key and iv. This is a hash
-  // of the users master_key (the users username and password). We will
-  // explain this usage a little later
-  userAuthenticationToken: string;
-  // This is the encrypted key which can be decrypted
-  // with the master_key to get back to the ethereum private key
+  // look at server part below to see what your server is expected to do
+  const response = await fetch(
+    'YOUR_SERVER_API_GET_RECOVERY_ENCRYPTED_INFO_ENDPOINT',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    }
+  );
+
+  const recoveryEncryptedKeyInfo = await response.json();
+  console.log(recoveryEncryptedKeyInfo);
+  // {
+  //   recoveryEncryptedKeyInfo: {
+  //       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
+  //       iv: '0xa3b054976a6ffc7fa1c527577480b663',
+  //    }
+  //}
+
+  // the user now needs to enter their new password, you should hold the
+  // the encryptedKeyInfo somewhere ready for the next method below
+  // below method should show you what the next steps are
+};
+
+interface RecoverWithOfflineRecoveryCodeRequest {
+  username: string;
+  recoveryCode: string;
+  newPassword: string;
+  encryptedKeyInfo: { key: string; iv: string };
+}
+
+// They have just clicked change email entered their new password and pressed enter
+export const recoverWithOfflineCode = async (
+  offlineRecoveryRequest: RecoverWithOfflineRecoveryCodeRequest
+) => {
+  const authenticationToken = await getAuthenticationToken(
+    offlineRecoveryRequest.username,
+    offlineRecoveryRequest.newPassword
+  );
+
+  const recoverWithOfflineCodeResponse = await recoverWithOfflineCode(
+    offlineRecoveryRequest.username,
+    offlineRecoveryRequest.recoveryCode,
+    offlineRecoveryRequest.newPassword,
+    offlineRecoveryRequest.encryptedKeyInfo
+  );
+  console.log(recoverWithOfflineCodeResponse);
+  // {
+  //    offlineRecoveryId: '362bd43d7da0a0e4963fbde594b3b9ed',
+  //    wallet: {
+  //        ethereumAddress: '0xa31e0D672AA9c6c4Ce863Bd17d1c7c9d6C56D5E8',
+  //        privateKey: '0x602cbc76611ae50bcff99beacb4ab8e84853830f3036da946a8473107c4056e8',
+  //    },
+  //    signature: '0xf09eb344c7cbe4aebd7c3d2109eeddd5a3f1ec6a445a26ed1c46f47bce902a274af03b86f19557026055467a796a7e76be4c1fdd19132fd102097abe3124af081c',
+  //    userAuthenticationToken: '0xace36d94ae1397b87135d363f207a440c5b30a0f2ce2ebf181b6ded0df9c84e7',
+  //    encryptedKeyInfo: {
+  //       key: '0xd0286e5b69d6003022a523e26bff0cdb1c2f28579ab692b10c0e68a7d3bb4b9a',
+  //       iv: '0xa3b054976a6ffc7fa1c527577480b663',
+  //    }
+  //}
+
+  const request = {
+    username,
+    recoveryCodeId: recoverWithOfflineCodeResponse.offlineRecoveryId,
+    ethereumAddress: recoverWithOfflineCodeResponse.ethereumAddress,
+    signature: recoverWithOfflineCodeResponse.signature,
+    userRecoveryCodeAuthenticationToken:
+      recoverWithOfflineCodeResponse.userRecoveryCodeAuthenticationToken,
+    encryptedKeyInfo: recoverWithOfflineCodeResponse.encryptedKeyInfo,
+  };
+  // look at server part below to see what your server is expected to do
+  await fetch('YOUR_SERVER_API_REDEEM_RECOVERY_OFFLINE_CODE_ENDPOINT', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  // redeemed offline recovery code! user has now been authenticated and can use their new wallet.
+};
+```
+
+##### Server
+
+```ts
+import {
+  verifyEthereumAddress,
+  hashAuthenticationTokenOnServer,
+  serverHashMatchesClientHash,
+} from 'ethereum-web2-encryption';
+import db from 'YOUR_DB';
+
+interface RecoveryEncryptedInfoRequest {
+  username: string;
+  recoveryAuthenticationToken: string;
+  offlineRecoveryCodeId: string;
+}
+
+// They client has called the server endpoint which then calls this
+// will keep in 1 method so its easy to follow
+export const recoveryEncryptedInfo = async (
+  recoveryEncryptedInfoRequest: RecoveryEncryptedInfoRequest
+) => {
+  const encryptedInfo = await db.userRecoveryEncryptedInfo(
+    recoveryEncryptedInfoRequest.username,
+    recoveryEncryptedInfoRequest.offlineRecoveryCodeId
+  );
+  if (!encryptedInfo) {
+    throw new Error(
+      'Offline recovery code has been redeemed or does not exists'
+    );
+  }
+
+  const serverHashMatchesClientHash = await serverHashMatchesClientHash(
+    encryptedInfo.salt,
+    recoveryEncryptedInfoRequest.recoveryAuthenticationToken,
+    encryptedInfo.serverAuthenticationHash
+  );
+  if (!serverHashMatchesClientHash) {
+    throw new Error(
+      '401 > this does not match the recovery auth token (wrong username + recoveryCode).'
+    );
+  }
+
+  return {
+    recoveryEncryptedKeyInfo: {
+      key: encryptedInfo.encryptedPk,
+      iv: encryptedInfo.encryptedPkIv,
+    },
+  };
+};
+
+interface RedeemOfflineRecoveryCodeRequest {
+  username: string;
+  offlineRecoveryCodeId: string;
+  ethereumAddress: string;
+  signature: string;
+  userRecoveryCodeAuthenticationToken: string;
   encryptedKeyInfo: {
     key: string;
     iv: string;
   };
 }
+
+// They client has called the server endpoint which then calls this
+// will keep in 1 method so its easy to follow
+export const redeemOfflineRecoveryCode = async (
+  redeemOfflineRecoveryCodeRequest: RedeemOfflineRecoveryCodeRequest
+) => {
+  const userExists = await db.userExists(
+    redeemOfflineRecoveryCodeRequest.username
+  );
+  if (!userExists) {
+    throw new Error('Username does not exists');
+  }
+
+  const recoveryCodeExists = await db.recoveryCodeExists(
+    redeemOfflineRecoveryCodeRequest.offlineRecoveryCodeId
+  );
+  if (!recoveryCodeExists) {
+    throw new Error('Recovery code id does not exist');
+  }
+
+  const ownsEthereumAddress = await verifyEthereumAddress(
+    redeemOfflineRecoveryCodeRequest.signature,
+    redeemOfflineRecoveryCodeRequest.encryptedKeyInfo,
+    redeemOfflineRecoveryCodeRequest.ethereumAddress
+  );
+  if (!ownsEthereumAddress) {
+    throw new Error('You do not own the ethereum address so can not recover');
+  }
+
+  const serverAuthHashResult = await hashAuthenticationTokenOnServer(
+    redeemOfflineRecoveryCodeRequest.userRecoveryCodeAuthenticationToken
+  );
+  console.log(serverAuthHashResult);
+  // {
+  //    salt: '0x2e7199cd889426be35d730aabc3fa073',
+  //    serverAuthenticationHash: '0xf06e83e0086d2546cc7730eeee08bc739daa2af80fb34691ebc0a0964b96eb34',
+  //}
+
+  await db.updateUserEncryptedData({
+    username: changeUsernameInfo.username,
+    serverAuthenticationHash: serverAuthHashResult.serverAuthenticationHash,
+    salt: serverAuthHashResult.salt,
+    encryptedPk: offlineRecoveryCodeRequest.encryptedKeyInfo.key,
+    encryptedPkIv: offlineRecoveryCodeRequest.encryptedKeyInfo.iv,
+  });
+
+  await db.redeemedOfflineRecoveryCode({
+    username: changeUsernameInfo.username,
+    recoveryCodeId: offlineRecoveryCodeRequest.offlineRecoveryCodeId,
+  });
+
+  // done - user has now redeemed and changed their password!
+};
 ```
 
 ## Explaining server node calls
