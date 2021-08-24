@@ -1151,3 +1151,7 @@ algo = serverAuthenticationHash === PBKDF(password: client_authentication_token,
 ### verifyEthereumAddress
 
 This method uses the `ecdsaRecover` logic which most languages have ways to support this so I will not explain how it works.
+
+## How does the encryption work and how is it safe
+
+- Break down keys and why they are safe etc etc!! explain in proper algo terms.
