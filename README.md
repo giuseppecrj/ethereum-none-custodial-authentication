@@ -36,6 +36,24 @@ Creating a new user.
 
 ![create wallet flow](sequences/1.create-wallet.svg)
 
+#### Step by step encryption breakdown
+
+- user enters username and password
+- creates a master key
+  - PBKDF(password: password, salt: username, iterations: 100000)
+- generate random 32 bytes for the users private key - crypto.randomBytes(32)
+- generate random 16 bytes for the iv
+- encrypt the private key with the master key and iv
+  - aesCBC(key: master_key, iv: iv)
+  - aesCBC.encrypt(private_key)
+  - returns a aes_key and aes_iv
+- generate the user_authentication_token hash of the master key
+  - keccak256(master_key)
+- create a signature proving you own the private key
+  - ecdsaSign(private_key, keccak256(aes_key + aes_iv))
+- store the username, ethereumAddress, signature, user_authentication_token, aes_key, aes_iv to the server
+- you have the private key in the client
+
 Code example this includes client + server.
 
 ##### Client
@@ -153,6 +171,20 @@ User logging into an already created account.
 
 ![login flow](sequences/2.login.svg)
 
+#### Step by step encryption breakdown
+
+- user enters username and password
+- creates the auth token
+  - keccak256(PBKDF(password: password, salt: username, iterations: 100000))
+- query the server with the username and authentication token which returns the aes_key + aes_iv if all security checks pass
+- creates master key
+  - PBKDF(password: password, salt: username, iterations: 100000)
+- decrypt the aes_key with the master key and iv (this is your encrypted private key)
+  - aesCBC(key: master_key, iv: iv)
+  - aesCBC.decrypt(aes_key)
+  - returns the decrypted private key
+- you now have the decrypted private key in the client
+
 ##### Client
 
 ```ts
@@ -256,6 +288,34 @@ export const login = async (loginRequest: LoginRequest) => {
 #### Flow
 
 ![change password flow](sequences/3.change-password.svg)
+
+#### Step by step encryption breakdown
+
+- user already logged in so username in memory
+- they confirm their current password
+- creates the auth token
+  - keccak256(PBKDF(password: password, salt: username, iterations: 100000))
+- query the server with the username and authentication token which returns the aes_key + aes_iv if all security checks pass
+- user enters new password
+- creates master key
+  - PBKDF(password: old_password, salt: username, iterations: 100000)
+- decrypt the aes_key with the master key and iv (this is your encrypted private key)
+  - aesCBC(key: master_key, iv: iv)
+  - aesCBC.decrypt(aes_key)
+  - returns the decrypted private key
+- creates new master key
+  - PBKDF(password: new_password, salt: username, iterations: 100000)
+- generate random 16 bytes for the new iv
+- encrypt the private key with the new master key and new iv
+  - aesCBC(key: new_master_key, iv: iv)
+  - aesCBC.encrypt(private_key)
+  - returns a aes_key and aes_iv
+- generate the new user_authentication_token hash of the master key
+  - keccak256(master_key)
+- create a signature proving you own the private key
+  - ecdsaSign(private_key, keccak256(aes_key + aes_iv))
+- update the user_authentication_token, aes_key, aes_iv to the server
+- you already have decrypted private key in the client, that always stays the same
 
 ##### Client
 
@@ -462,6 +522,34 @@ export const changePassword = async (
 #### Flow
 
 ![change username flow](sequences/4.change-username.svg)
+
+#### Step by step encryption breakdown
+
+- user already logged in so username in memory
+- they confirm their current password
+- creates the auth token
+  - keccak256(PBKDF(password: password, salt: username, iterations: 100000))
+- query the server with the username and authentication token which returns the aes_key + aes_iv if all security checks pass
+- user enters new username
+- creates master key
+  - PBKDF(password: password, salt: old_username, iterations: 100000)
+- decrypt the aes_key with the master key and iv (this is your encrypted private key)
+  - aesCBC(key: master_key, iv: iv)
+  - aesCBC.decrypt(aes_key)
+  - returns the decrypted private key
+- creates new master key
+  - PBKDF(password: password, salt: new_username, iterations: 100000)
+- generate random 16 bytes for the new iv
+- encrypt the private key with the new master key and new iv
+  - aesCBC(key: new_master_key, iv: iv)
+  - aesCBC.encrypt(private_key)
+  - returns a aes_key and aes_iv
+- generate the new user_authentication_token hash of the master key
+  - keccak256(master_key)
+- create a signature proving you own the private key
+  - ecdsaSign(private_key, keccak256(aes_key + aes_iv))
+- update the username, user_authentication_token, aes_key, aes_iv to the server
+- you already have decrypted private key in the client, that always stays the same
 
 ##### Client
 
@@ -681,6 +769,30 @@ Ability to recover is critical on something which holds real funds. This exposes
 
 ![generate recovery offline code flow](sequences/5.generate-offline-recovery-code.svg)
 
+##### Step by step encryption breakdown
+
+- user already logged in so username in memory
+- they confirm their current password
+- creates the auth token
+  - keccak256(PBKDF(password: password, salt: username, iterations: 100000))
+- query the server with the username and authentication token which returns the aes_key + aes_iv if all security checks pass
+- generate random 64 bytes for the offline recovery code
+- creates offline recovery code key
+  - PBKDF(password: offline_recovery_code, salt: username, iterations: 100000)
+- generate random 16 bytes for the recovery iv
+- encrypt the private key with the offline_recovery_code and new iv
+  - aesCBC(key: offline_recovery_code, iv: iv)
+  - aesCBC.encrypt(private_key)
+  - returns a aes_key and aes_iv
+- generate recovery_code_id, a way for the server to do lookups for it
+- generate random 16 bytes for the recovery_code_id
+- offline_recovery_code + recovery_code_id is the userCode for the user to store
+- generate the new recovery_user_authentication_token hash of the master key
+  - keccak256(offline_recovery_code)
+- create a signature proving you own the private key
+  - ecdsaSign(private_key, keccak256(aes_key + aes_iv))
+- save the username, recovery_code_id, recovery_user_authentication_token, aes_key, aes_iv to the server
+
 ##### Client
 
 ```ts
@@ -897,6 +1009,36 @@ If the user wants to recover remember you got their recovery encrypted data on t
 ##### Flow
 
 ![recover with offline code flow](sequences/6.recover-with-offline-code.svg)
+
+##### Step by step encryption breakdown
+
+- user clicks recovery
+- enters the username
+- enters the offline_recovery_code
+- gets the offline recovery authentication info
+  - returns recovery_user_authentication_token and recovery_code_id
+- query the server with the username, recovery_user_authentication_token and recovery_code_id which returns the recovery aes_key + aes_iv if all security checks pass
+- enter new password
+- creates master key
+  - PBKDF(password: recovery_user_authentication_token, salt: username, iterations: 100000)
+- decrypt the aes_key with the master key and iv (this is your encrypted private key)
+  - aesCBC(key: master_key, iv: iv)
+  - aesCBC.decrypt(aes_key)
+  - returns the decrypted private key
+- creates new master key
+  - PBKDF(password: new_password, salt: username, iterations: 100000)
+- generate random 16 bytes for the new iv
+- encrypt the private key with the new master key and new iv
+  - aesCBC(key: new_master_key, iv: iv)
+  - aesCBC.encrypt(private_key)
+  - returns a aes_key and aes_iv
+- generate the new user_authentication_token hash of the master key
+  - keccak256(master_key)
+- create a signature proving you own the private key
+  - ecdsaSign(private_key, keccak256(aes_key + aes_iv))
+- update the username, user_authentication_token, aes_key, aes_iv to the server
+- remove recovery_code_id keys from database
+- you already have decrypted private key in the client, that always stays the same
 
 ##### Client
 
@@ -1151,7 +1293,3 @@ algo = serverAuthenticationHash === PBKDF(password: client_authentication_token,
 ### verifyEthereumAddress
 
 This method uses the `ecdsaRecover` logic which most languages have ways to support this so I will not explain how it works.
-
-## How does the encryption work and how is it safe
-
-- Break down keys and why they are safe etc etc!! explain in proper algo terms.
