@@ -242,6 +242,7 @@ export const login = async (username: string, password: string) => {
 import {
   verifyEthereumAddress,
   hashAuthenticationTokenOnServer,
+  serverHashMatchesClientHash
 } from 'ethereum-web2-encryption';
 import db from 'YOUR_DB';
 
